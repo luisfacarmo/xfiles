@@ -31,12 +31,13 @@
 			</template>
 		</NcEmptyContent>
 
-		<!-- Recovery link — subtle, bottom-right -->
+		<!-- Recovery link — hidden dot, reveals key icon on hover -->
 		<button
 			class="xfiles-locked__recovery"
 			:title="t('xfiles', 'Recover vault with recovery key')"
 			@click="showRecovery = true">
-			<KeyIcon :size="18" />
+			<span class="xfiles-locked__recovery-dot">.</span>
+			<KeyIcon :size="16" class="xfiles-locked__recovery-icon" />
 		</button>
 
 		<!-- Recovery Dialog -->
@@ -182,26 +183,41 @@ export default {
 
 .xfiles-locked__recovery {
 	position: absolute;
-	bottom: 16px;
-	right: 16px;
+	bottom: 12px;
+	right: 12px;
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	width: 36px;
-	height: 36px;
+	width: 24px;
+	height: 24px;
 	padding: 0;
 	border: none;
 	border-radius: 50%;
 	background: transparent;
-	color: var(--color-text-maxcontrast);
 	cursor: pointer;
-	opacity: 0.5;
-	transition: opacity 0.2s, color 0.2s;
+}
+
+.xfiles-locked__recovery-dot {
+	color: var(--color-text-maxcontrast);
+	font-size: 10px;
+	line-height: 1;
+	opacity: 0.4;
+}
+
+.xfiles-locked__recovery-icon {
+	display: none;
+	color: var(--color-text-maxcontrast);
+}
+
+.xfiles-locked__recovery:hover .xfiles-locked__recovery-dot {
+	display: none;
+}
+
+.xfiles-locked__recovery:hover .xfiles-locked__recovery-icon {
+	display: block;
 }
 
 .xfiles-locked__recovery:hover {
-	opacity: 1;
-	color: var(--color-main-text);
 	background: var(--color-background-hover);
 }
 
