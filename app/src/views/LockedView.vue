@@ -27,18 +27,19 @@
 						</template>
 						{{ t('xfiles', 'Unlock') }}
 					</NcButton>
+					<div class="xfiles-locked__recovery-row">
+						<button
+							type="button"
+							class="xfiles-locked__recovery"
+							:title="t('xfiles', 'Recover vault with recovery key')"
+							@click="showRecovery = true">
+							<span class="xfiles-locked__recovery-dot">.</span>
+							<KeyIcon :size="16" class="xfiles-locked__recovery-icon" />
+						</button>
+					</div>
 				</form>
 			</template>
 		</NcEmptyContent>
-
-		<!-- Recovery link — hidden dot, reveals key icon on hover -->
-		<button
-			class="xfiles-locked__recovery"
-			:title="t('xfiles', 'Recover vault with recovery key')"
-			@click="showRecovery = true">
-			<span class="xfiles-locked__recovery-dot">.</span>
-			<KeyIcon :size="16" class="xfiles-locked__recovery-icon" />
-		</button>
 
 		<!-- Recovery Dialog -->
 		<NcDialog
@@ -169,7 +170,6 @@ export default {
 
 <style scoped>
 .xfiles-locked {
-	position: relative;
 	height: 100%;
 }
 
@@ -181,10 +181,13 @@ export default {
 	margin-top: 16px;
 }
 
+.xfiles-locked__recovery-row {
+	display: flex;
+	justify-content: flex-end;
+	margin-top: 4px;
+}
+
 .xfiles-locked__recovery {
-	position: absolute;
-	bottom: 16px;
-	right: 16px;
 	display: flex;
 	align-items: center;
 	justify-content: center;
