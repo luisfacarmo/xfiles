@@ -3,7 +3,6 @@ app/vendor/
 app/node_modules/
 
 # Build artifacts
-app/js/
 app/css/style.css.map
 
 # Environment
