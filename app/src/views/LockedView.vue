@@ -4,7 +4,12 @@
 			:name="t('xfiles', 'The truth is out there')"
 			:description="t('xfiles', 'Enter your vault password to access your classified files.')">
 			<template #icon>
-				<LockIcon :size="64" />
+				<button
+					class="xfiles-locked__icon-btn"
+					:title="t('xfiles', 'Forgot password? Click to recover.')"
+					@click="showRecovery = true">
+					<FileEyeOutlineIcon :size="64" />
+				</button>
 			</template>
 			<template #action>
 				<form class="xfiles-locked__form" @submit.prevent="onSubmit">
@@ -27,16 +32,6 @@
 						</template>
 						{{ t('xfiles', 'Unlock') }}
 					</NcButton>
-					<div class="xfiles-locked__recovery-row">
-						<button
-							type="button"
-							class="xfiles-locked__recovery"
-							:title="t('xfiles', 'Recover vault with recovery key')"
-							@click="showRecovery = true">
-							<span class="xfiles-locked__recovery-dot">.</span>
-							<KeyIcon :size="16" class="xfiles-locked__recovery-icon" />
-						</button>
-					</div>
 				</form>
 			</template>
 		</NcEmptyContent>
@@ -82,8 +77,7 @@ import NcEmptyContent from '@nextcloud/vue/dist/Components/NcEmptyContent.js'
 import NcLoadingIcon from '@nextcloud/vue/dist/Components/NcLoadingIcon.js'
 import NcPasswordField from '@nextcloud/vue/dist/Components/NcPasswordField.js'
 import NcTextField from '@nextcloud/vue/dist/Components/NcTextField.js'
-import KeyIcon from 'vue-material-design-icons/KeyVariant.vue'
-import LockIcon from 'vue-material-design-icons/Lock.vue'
+import FileEyeOutlineIcon from 'vue-material-design-icons/FileEyeOutline.vue'
 import LockOpenIcon from 'vue-material-design-icons/LockOpen.vue'
 import { showError, showSuccess } from '@nextcloud/dialogs'
 import { translate as t } from '@nextcloud/l10n'
@@ -98,8 +92,7 @@ export default {
 		NcLoadingIcon,
 		NcPasswordField,
 		NcTextField,
-		KeyIcon,
-		LockIcon,
+		FileEyeOutlineIcon,
 		LockOpenIcon,
 	},
 	data() {
@@ -181,47 +174,21 @@ export default {
 	margin-top: 16px;
 }
 
-.xfiles-locked__recovery-row {
-	display: flex;
-	justify-content: flex-end;
-	margin-top: 4px;
-}
-
-.xfiles-locked__recovery {
+.xfiles-locked__icon-btn {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	width: 24px;
-	height: 24px;
 	padding: 0;
 	border: none;
-	border-radius: 50%;
 	background: transparent;
+	color: var(--color-main-text);
 	cursor: pointer;
+	border-radius: 50%;
+	transition: color 0.2s;
 }
 
-.xfiles-locked__recovery-dot {
-	color: var(--color-text-maxcontrast);
-	font-size: 14px;
-	font-weight: bold;
-	line-height: 1;
-}
-
-.xfiles-locked__recovery-icon {
-	display: none;
-	color: var(--color-text-maxcontrast);
-}
-
-.xfiles-locked__recovery:hover .xfiles-locked__recovery-dot {
-	display: none;
-}
-
-.xfiles-locked__recovery:hover .xfiles-locked__recovery-icon {
-	display: block;
-}
-
-.xfiles-locked__recovery:hover {
-	background: var(--color-background-hover);
+.xfiles-locked__icon-btn:hover {
+	color: var(--color-primary-element);
 }
 
 .xfiles-locked__recovery-desc {
