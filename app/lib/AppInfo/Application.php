@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OCA\XFiles\AppInfo;
 
+use OCA\XFiles\Middleware\VaultSessionMiddleware;
 use OCP\AppFramework\App;
 use OCP\AppFramework\Bootstrap\IBootContext;
 use OCP\AppFramework\Bootstrap\IBootstrap;
@@ -18,7 +19,7 @@ class Application extends App implements IBootstrap {
     }
 
     public function register(IRegistrationContext $context): void {
-        // Middleware, event listeners, and services will be registered here
+        $context->registerMiddleware(VaultSessionMiddleware::class);
     }
 
     public function boot(IBootContext $context): void {
