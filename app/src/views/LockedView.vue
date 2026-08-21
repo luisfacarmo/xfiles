@@ -183,8 +183,8 @@ export default {
 
 .xfiles-locked__recovery {
 	position: absolute;
-	bottom: 12px;
-	right: 12px;
+	bottom: 16px;
+	right: 16px;
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -199,9 +199,9 @@ export default {
 
 .xfiles-locked__recovery-dot {
 	color: var(--color-text-maxcontrast);
-	font-size: 10px;
+	font-size: 14px;
+	font-weight: bold;
 	line-height: 1;
-	opacity: 0.4;
 }
 
 .xfiles-locked__recovery-icon {
