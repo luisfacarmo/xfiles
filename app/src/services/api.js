@@ -22,3 +22,11 @@ export async function lockVault() {
 	const response = await axios.post(`${baseUrl}/vault/lock`)
 	return response.data.ocs.data
 }
+
+export async function recoverVault(recoveryKey, newPassword) {
+	const response = await axios.post(`${baseUrl}/vault/recover`, {
+		recovery_key: recoveryKey,
+		new_password: newPassword,
+	})
+	return response.data.ocs.data
+}

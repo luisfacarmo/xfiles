@@ -121,6 +121,39 @@ class VaultController extends OCSController {
         return new DataResponse(['success' => true]);
     }
 
+    /**
+     * Recover vault access using recovery key.
+     */
+    #[NoAdminRequired]
+    #[BruteForceProtection(action: 'xfiles_recover')]
+    #[UserRateLimit(limit: 3, period: 300)]
+    public function recover(string $recovery_key, string $new_password): DataResponse {
+        $userId = $this->getUserId();
+        if ($userId === null) {
+            return new DataResponse(['error' => 'Not authenticated'], Http::STATUS_UNAUTHORIZED);
+        }
+
+        try {
+            $this->vaultService->resetWithRecoveryKey($userId, $recovery_key, $new_password);
+            $this->logger->info('Vault password reset via recovery key', ['app' => Application::APP_ID]);
+            return new DataResponse(['success' => true]);
+        } catch (VaultNotFoundException $e) {
+            $response = new DataResponse(
+                ['error' => 'Vault not found', 'code' => 'VAULT_NOT_FOUND'],
+                Http::STATUS_NOT_FOUND
+            );
+            $response->throttle();
+            return $response;
+        } catch (InvalidPasswordException $e) {
+            $response = new DataResponse(
+                ['error' => $e->getMessage(), 'code' => 'INVALID_RECOVERY_KEY'],
+                Http::STATUS_FORBIDDEN
+            );
+            $response->throttle();
+            return $response;
+        }
+    }
+
     private function getUserId(): ?string {
         $user = $this->userSession->getUser();
         return $user?->getUID();
