@@ -2,8 +2,8 @@
 	<NcContent app-name="xfiles">
 		<NcAppContent>
 			<NcEmptyContent
-				:name="t('xfiles', 'X-Files')"
-				:description="t('xfiles', 'Trust no one — your photo vault is being prepared.')">
+				:name="appName"
+				:description="appDescription">
 				<template #icon>
 					<LockIcon :size="64" />
 				</template>
@@ -17,6 +17,7 @@ import NcContent from '@nextcloud/vue/dist/Components/NcContent.js'
 import NcAppContent from '@nextcloud/vue/dist/Components/NcAppContent.js'
 import NcEmptyContent from '@nextcloud/vue/dist/Components/NcEmptyContent.js'
 import LockIcon from 'vue-material-design-icons/Lock.vue'
+import { translate as t } from '@nextcloud/l10n'
 
 export default {
 	name: 'App',
@@ -25,6 +26,14 @@ export default {
 		NcAppContent,
 		NcEmptyContent,
 		LockIcon,
+	},
+	computed: {
+		appName() {
+			return t('xfiles', 'X-Files')
+		},
+		appDescription() {
+			return t('xfiles', 'Trust no one — your photo vault is being prepared.')
+		},
 	},
 }
 </script>
