@@ -1,0 +1,41 @@
+# Dependencies
+app/vendor/
+app/node_modules/
+
+# Build artifacts
+app/js/
+app/css/style.css.map
+
+# Environment
+.env
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# PHP
+.phpunit.result.cache
+
+# Release artifacts
+dist/
+
+# App signing keys (NEVER commit)
+*.key
+*.csr
+*.crt
+*.pem
+
+# IDE auto-generated rules
+.claude/
+.cursor/
+.windsurf/
+.kiro/steering/appsec-rules.md
