@@ -77,7 +77,7 @@ import NcEmptyContent from '@nextcloud/vue/dist/Components/NcEmptyContent.js'
 import NcLoadingIcon from '@nextcloud/vue/dist/Components/NcLoadingIcon.js'
 import NcPasswordField from '@nextcloud/vue/dist/Components/NcPasswordField.js'
 import NcTextField from '@nextcloud/vue/dist/Components/NcTextField.js'
-import FileEyeOutlineIcon from 'vue-material-design-icons/FileEyeOutline.vue'
+import FileEyeOutlineIcon from 'vue-material-design-icons/EyeLockOutline.vue'
 import LockOpenIcon from 'vue-material-design-icons/LockOpen.vue'
 import { showError, showSuccess } from '@nextcloud/dialogs'
 import { translate as t } from '@nextcloud/l10n'
@@ -194,5 +194,9 @@ export default {
 .xfiles-locked__recovery-desc {
 	margin-bottom: 16px;
 	color: var(--color-text-maxcontrast);
+}
+
+.xfiles-locked :deep(.xfiles-locked__form:last-child) {
+	padding-bottom: 16px;
 }
 </style>
