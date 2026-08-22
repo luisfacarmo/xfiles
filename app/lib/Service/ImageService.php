@@ -142,12 +142,46 @@ class ImageService {
      * @throws VaultNotFoundException
      */
     public function importFromUserFiles(string $userId, ?int $fileId = null, ?string $path = null): VaultImage {
+        $opId = 'XF-' . date('Ymd') . '-' . bin2hex(random_bytes(4));
+        $startTime = hrtime(true);
+
+        // Resolve vault (must exist, but does NOT need to be unlocked)
+        try {
+            $vault = $this->vaultMapper->findByUserId($userId);
+        } catch (\OCP\AppFramework\Db\DoesNotExistException) {
+            $this->logger->warning('xfiles.classify.failure', [
+                'app' => 'xfiles',
+                'op' => $opId,
+                'user' => $userId,
+                'step' => 'resolve_vault',
+                'error' => 'No vault exists for user',
+            ]);
+            throw new VaultNotFoundException('No vault found — set up X-Files first');
+        }
+
+        $this->logger->info('xfiles.classify.start', [
+            'app' => 'xfiles',
+            'op' => $opId,
+            'user' => $userId,
+            'fileId' => $fileId,
+            'path' => $path,
+            'vault_id' => $vault->getId(),
+        ]);
+
         $userFolder = $this->rootFolder->getUserFolder($userId);
         $node = null;
 
+        // Step: Resolve source file
         if ($fileId !== null) {
             $nodes = $userFolder->getById($fileId);
             if (empty($nodes)) {
+                $this->logger->warning('xfiles.classify.failure', [
+                    'app' => 'xfiles',
+                    'op' => $opId,
+                    'step' => 'resolve_source',
+                    'error' => 'File not found by id',
+                    'fileId' => $fileId,
+                ]);
                 throw new InvalidImageException('File not found (id: ' . $fileId . ')');
             }
             $node = $nodes[0];
@@ -155,6 +189,13 @@ class ImageService {
             try {
                 $node = $userFolder->get($path);
             } catch (NotFoundException) {
+                $this->logger->warning('xfiles.classify.failure', [
+                    'app' => 'xfiles',
+                    'op' => $opId,
+                    'step' => 'resolve_source',
+                    'error' => 'File not found by path',
+                    'path' => $path,
+                ]);
                 throw new InvalidImageException('File not found: ' . basename($path));
             }
         } else {
@@ -162,16 +203,36 @@ class ImageService {
         }
 
         if (!($node instanceof \OCP\Files\File)) {
+            $this->logger->warning('xfiles.classify.failure', [
+                'app' => 'xfiles',
+                'op' => $opId,
+                'step' => 'resolve_source',
+                'error' => 'Not a file',
+            ]);
             throw new InvalidImageException('Path is not a file');
         }
 
-        // Step 1: Write to temp file for processing
+        $this->logger->debug('xfiles.classify.step', [
+            'app' => 'xfiles',
+            'op' => $opId,
+            'step' => 'source_resolved',
+            'name' => $node->getName(),
+            'size' => $node->getSize(),
+            'mime' => $node->getMimeType(),
+        ]);
+
+        // Step: Copy to temp + upload to vault
         $tmpFile = tempnam(sys_get_temp_dir(), 'xfiles_import_');
         try {
             $content = $node->getContent();
             file_put_contents($tmpFile, $content);
 
-            // Step 2: Import into vault (copy to AppData + DB insert)
+            $this->logger->debug('xfiles.classify.step', [
+                'app' => 'xfiles',
+                'op' => $opId,
+                'step' => 'copy_to_vault',
+            ]);
+
             $image = $this->upload(
                 $userId,
                 $tmpFile,
@@ -179,16 +240,24 @@ class ImageService {
                 $node->getMimeType()
             );
 
-            // Step 3: Verify the vault copy is intact
+            // Step: Verify integrity
+            $this->logger->debug('xfiles.classify.step', [
+                'app' => 'xfiles',
+                'op' => $opId,
+                'step' => 'integrity_check',
+                'storage_name' => $image->getStorageName(),
+            ]);
+
             $vaultFolder = $this->getUserFolder($userId);
             $vaultFile = $vaultFolder->getFile($image->getStorageName());
             $vaultChecksum = hash('sha256', $vaultFile->getContent());
 
             if ($vaultChecksum !== $image->getChecksum()) {
-                // Integrity check failed — remove the corrupt vault entry, keep original
-                $this->logger->error('Vault integrity check failed during import', [
+                $this->logger->error('xfiles.classify.failure', [
                     'app' => 'xfiles',
-                    'user' => $userId,
+                    'op' => $opId,
+                    'step' => 'integrity_check',
+                    'error' => 'Checksum mismatch',
                     'expected' => $image->getChecksum(),
                     'got' => $vaultChecksum,
                 ]);
@@ -196,31 +265,60 @@ class ImageService {
                 throw new InvalidImageException('Import verification failed — original file preserved');
             }
 
-            // Step 4: Delete original permanently (bypass trashbin)
+            // Step: Delete original permanently
             $nodePath = $node->getPath();
+            $this->logger->debug('xfiles.classify.step', [
+                'app' => 'xfiles',
+                'op' => $opId,
+                'step' => 'delete_source',
+                'path' => $nodePath,
+                'trashbin_disabled' => true,
+            ]);
+
             \OCA\XFiles\Listener\BypassTrashbinListener::flagForPermanentDelete($nodePath);
+            $sourceDeleted = true;
             try {
                 $node->delete();
             } catch (\Throwable $e) {
-                // Delete failed — vault copy exists, original remains (acceptable state)
+                $sourceDeleted = false;
                 \OCA\XFiles\Listener\BypassTrashbinListener::clearFlag($nodePath);
-                $this->logger->warning('Could not delete original after classify', [
+                $this->logger->warning('xfiles.classify.step', [
                     'app' => 'xfiles',
-                    'user' => $userId,
+                    'op' => $opId,
+                    'step' => 'delete_source_failed',
                     'path' => $nodePath,
                     'error' => $e->getMessage(),
                 ]);
-                // Don't throw — the import succeeded, just the cleanup didn't
             }
 
-            $this->logger->info('File classified into vault', [
+            // Success
+            $durationMs = (int) ((hrtime(true) - $startTime) / 1_000_000);
+            $this->logger->info('xfiles.classify.success', [
                 'app' => 'xfiles',
+                'op' => $opId,
                 'user' => $userId,
-                'fileId' => $fileId,
-                'path' => $path ?? $node->getName(),
+                'image_id' => $image->getId(),
+                'original_name' => $node->getName(),
+                'source_deleted' => $sourceDeleted,
+                'trashbin_bypassed' => $sourceDeleted,
+                'duration_ms' => $durationMs,
             ]);
 
             return $image;
+        } catch (InvalidImageException $e) {
+            // Re-throw after logging (already logged above for integrity)
+            throw $e;
+        } catch (\Throwable $e) {
+            $durationMs = (int) ((hrtime(true) - $startTime) / 1_000_000);
+            $this->logger->error('xfiles.classify.failure', [
+                'app' => 'xfiles',
+                'op' => $opId,
+                'user' => $userId,
+                'step' => 'unexpected',
+                'error' => $e->getMessage(),
+                'duration_ms' => $durationMs,
+            ]);
+            throw new InvalidImageException('Classification failed: ' . $e->getMessage());
         } finally {
             if (file_exists($tmpFile)) {
                 unlink($tmpFile);
