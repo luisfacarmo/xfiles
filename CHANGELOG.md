@@ -35,3 +35,5 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Database: 2 tables (xfiles_vaults, xfiles_images) via SimpleMigrationStep
 - Frontend: Vue 2.7 + @nextcloud/vue 8 + webpack 5
 - Architecture: OCSController (vault), Controller (images), QBMapper + Entity
+- PHPStan level 5: 0 errors
+- Integration verified: coexists with Photos, Memories, Recognize, PreviewGenerator, Activity, Files, DevNull
