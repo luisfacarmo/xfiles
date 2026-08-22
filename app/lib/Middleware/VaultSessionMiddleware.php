@@ -28,8 +28,13 @@ class VaultSessionMiddleware extends Middleware {
     }
 
     public function beforeController($controller, $methodName): void {
-        // Only gate ImageController (added in Fase 3)
+        // Only gate ImageController
         if (!($controller instanceof ImageController)) {
+            return;
+        }
+
+        // Import does NOT require vault unlock (deposit without opening)
+        if ($methodName === 'import') {
             return;
         }
 

@@ -131,6 +131,13 @@ class ImageService {
      * Import a file from user's Nextcloud filesystem into the vault.
      * Resolves by fileId (preferred) or path.
      *
+     * Safe move pattern:
+     * 1. Copy content to AppData (vault)
+     * 2. Verify the copy is intact (checksum)
+     * 3. Delete original permanently (bypass trashbin)
+     *
+     * The original is NEVER deleted before the vault copy is confirmed.
+     *
      * @throws InvalidImageException
      * @throws VaultNotFoundException
      */
@@ -158,11 +165,13 @@ class ImageService {
             throw new InvalidImageException('Path is not a file');
         }
 
-        // Write to temp file for processing (same pipeline as upload)
+        // Step 1: Write to temp file for processing
         $tmpFile = tempnam(sys_get_temp_dir(), 'xfiles_import_');
         try {
-            file_put_contents($tmpFile, $node->getContent());
+            $content = $node->getContent();
+            file_put_contents($tmpFile, $content);
 
+            // Step 2: Import into vault (copy to AppData + DB insert)
             $image = $this->upload(
                 $userId,
                 $tmpFile,
@@ -170,11 +179,45 @@ class ImageService {
                 $node->getMimeType()
             );
 
-            $this->logger->info('Image imported from Files to vault', [
+            // Step 3: Verify the vault copy is intact
+            $vaultFolder = $this->getUserFolder($userId);
+            $vaultFile = $vaultFolder->getFile($image->getStorageName());
+            $vaultChecksum = hash('sha256', $vaultFile->getContent());
+
+            if ($vaultChecksum !== $image->getChecksum()) {
+                // Integrity check failed — remove the corrupt vault entry, keep original
+                $this->logger->error('Vault integrity check failed during import', [
+                    'app' => 'xfiles',
+                    'user' => $userId,
+                    'expected' => $image->getChecksum(),
+                    'got' => $vaultChecksum,
+                ]);
+                $this->delete($image->getId(), $userId);
+                throw new InvalidImageException('Import verification failed — original file preserved');
+            }
+
+            // Step 4: Delete original permanently (bypass trashbin)
+            $nodePath = $node->getPath();
+            \OCA\XFiles\Listener\BypassTrashbinListener::flagForPermanentDelete($nodePath);
+            try {
+                $node->delete();
+            } catch (\Throwable $e) {
+                // Delete failed — vault copy exists, original remains (acceptable state)
+                \OCA\XFiles\Listener\BypassTrashbinListener::clearFlag($nodePath);
+                $this->logger->warning('Could not delete original after classify', [
+                    'app' => 'xfiles',
+                    'user' => $userId,
+                    'path' => $nodePath,
+                    'error' => $e->getMessage(),
+                ]);
+                // Don't throw — the import succeeded, just the cleanup didn't
+            }
+
+            $this->logger->info('File classified into vault', [
                 'app' => 'xfiles',
                 'user' => $userId,
                 'fileId' => $fileId,
-                'path' => $path ?? $node->getPath(),
+                'path' => $path ?? $node->getName(),
             ]);
 
             return $image;

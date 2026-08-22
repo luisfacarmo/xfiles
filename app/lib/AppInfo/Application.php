@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace OCA\XFiles\AppInfo;
 
 use OCA\Files\Event\LoadAdditionalScriptsEvent;
+use OCA\Files_Trashbin\Events\MoveToTrashEvent;
+use OCA\XFiles\Listener\BypassTrashbinListener;
 use OCA\XFiles\Listener\LoadAdditionalScriptsListener;
 use OCA\XFiles\Middleware\VaultSessionMiddleware;
 use OCP\AppFramework\App;
@@ -23,6 +25,7 @@ class Application extends App implements IBootstrap {
     public function register(IRegistrationContext $context): void {
         $context->registerMiddleware(VaultSessionMiddleware::class);
         $context->registerEventListener(LoadAdditionalScriptsEvent::class, LoadAdditionalScriptsListener::class);
+        $context->registerEventListener(MoveToTrashEvent::class, BypassTrashbinListener::class);
     }
 
     public function boot(IBootContext $context): void {

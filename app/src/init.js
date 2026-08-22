@@ -24,8 +24,10 @@ const imageMimes = [
 ]
 
 const sendToVaultAction = new FileAction({
-	id: 'xfiles-send-to-vault',
-	displayName: () => t('xfiles', 'Send to X-Files'),
+	id: 'xfiles-classify',
+	displayName: (files) => files.length > 1
+		? t('xfiles', 'Classify these files')
+		: t('xfiles', 'Classify'),
 	iconSvgInline: () => lockSvg,
 
 	enabled(files) {
@@ -43,10 +45,10 @@ const sendToVaultAction = new FileAction({
 			})
 
 			if (response.data?.success) {
-				showSuccess(t('xfiles', '"{name}" sent to X-Files vault', { name: file.basename }))
+				showSuccess(t('xfiles', '"{name}" classified', { name: file.basename }))
 				return true
 			}
-			showError(response.data?.error || t('xfiles', 'Failed to send to vault'))
+			showError(response.data?.error || t('xfiles', 'Failed to classify'))
 			return false
 		} catch (e) {
 			if (e.response?.status === 403) {
@@ -54,7 +56,7 @@ const sendToVaultAction = new FileAction({
 			} else if (e.response?.status === 404) {
 				showError(t('xfiles', 'No vault found. Set up X-Files first.'))
 			} else {
-				showError(t('xfiles', 'Failed to send to vault'))
+				showError(t('xfiles', 'Failed to classify'))
 			}
 			return false
 		}
@@ -75,10 +77,10 @@ const sendToVaultAction = new FileAction({
 		}
 		const successCount = results.filter(r => r).length
 		if (successCount > 0) {
-			showSuccess(t('xfiles', '{count} image(s) sent to X-Files vault', { count: successCount }))
+			showSuccess(t('xfiles', '{count} file(s) classified', { count: successCount }))
 		}
 		if (successCount < files.length) {
-			showError(t('xfiles', '{count} image(s) failed', { count: files.length - successCount }))
+			showError(t('xfiles', '{count} file(s) failed', { count: files.length - successCount }))
 		}
 		return results
 	},
