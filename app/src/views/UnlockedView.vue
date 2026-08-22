@@ -52,7 +52,11 @@
 				v-for="image in images"
 				:key="image.id"
 				class="xfiles-unlocked__tile"
-				@click="openViewer(image)">
+				tabindex="0"
+				role="button"
+				:aria-label="image.original_name"
+				@click="openViewer(image)"
+				@keydown.enter="openViewer(image)">
 				<img
 					:src="getThumbnailUrl(image.id)"
 					:alt="image.original_name"
@@ -287,6 +291,15 @@ export default {
 }
 
 .xfiles-unlocked__tile:hover .xfiles-unlocked__tile-overlay {
+	opacity: 1;
+}
+
+.xfiles-unlocked__tile:focus {
+	outline: 2px solid var(--color-primary-element);
+	outline-offset: 2px;
+}
+
+.xfiles-unlocked__tile:focus .xfiles-unlocked__tile-overlay {
 	opacity: 1;
 }
 
