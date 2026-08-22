@@ -7,6 +7,31 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
-- Initial project structure
-- Technical planning document (Photo Vault - Plano Técnico de Implementação)
-- Repository setup (LICENSE, README, CI workflow)
+- **Vault lifecycle** — setup with password, lock, unlock, auto-lock timeout
+- **Recovery key** — generated on setup (XFLS-XXXX format), download as .txt, reset password flow
+- **Image upload** — multi-file, MIME validation (finfo), size limit (configurable), SHA-256 checksum
+- **Image storage** — AppData-based (isolated from Files/Photos/Memories/WebDAV/Search)
+- **Thumbnail generation** — 256x256 JPEG, generated on upload (GD)
+- **Image gallery** — CSS grid, lazy loading, fullscreen viewer (NcModal)
+- **Image deletion** — with confirmation, removes file + thumbnail + DB record
+- **Brute-force protection** — `#[BruteForceProtection]` on unlock and recovery endpoints
+- **Rate limiting** — `#[UserRateLimit]` on sensitive operations
+- **VaultSessionMiddleware** — gates all image endpoints, returns 403 when locked
+- **Cross-user isolation** — ownership check on every image operation
+- **Keyboard accessibility** — tabindex + Enter on gallery tiles, focus outline
+- **Security PoC** — 12/12 isolation tests passed (see docs/security-poc-results.md)
+
+### Security
+- Password hashing: Argon2id (with automatic rehash on algorithm upgrade)
+- Session: ISession with CryptoSessionData (encrypted at rest)
+- Storage: IAppData (invisible to user filesystem, WebDAV, Photos, Memories, Search)
+- MIME validation: finfo (server-side, never trusts client Content-Type)
+- Filenames: UUID-based storage names (no path traversal possible)
+- CSRF: OCS framework for vault ops, NoCSRFRequired only on GET image endpoints
+- Ownership: user_id verified on every DB query
+
+### Technical
+- Nextcloud 28–34 compatible, PHP 8.2+
+- Database: 2 tables (xfiles_vaults, xfiles_images) via SimpleMigrationStep
+- Frontend: Vue 2.7 + @nextcloud/vue 8 + webpack 5
+- Architecture: OCSController (vault), Controller (images), QBMapper + Entity

@@ -32,16 +32,24 @@ Think Google Photos Locked Folder or Samsung Secure Folder, but self-hosted.
 
 | Component | Status | Notes |
 |-----------|--------|-------|
-| Vault lifecycle (create/lock/unlock) | 📋 Planned | |
-| Password (Argon2id) | 📋 Planned | |
-| Image upload to AppData | 📋 Planned | |
-| Image listing/gallery | 📋 Planned | |
-| Image viewer (fullscreen) | 📋 Planned | |
-| Image deletion | 📋 Planned | |
-| Thumbnail generation | 📋 Planned | |
-| Session timeout | 📋 Planned | |
-| Brute-force protection | 📋 Planned | |
-| Security PoC (isolation tests) | 📋 Planned | |
+| Vault lifecycle (create/lock/unlock) | 🟢 Working | Argon2id, session-based |
+| Password (Argon2id) | 🟢 Working | + rehash on upgrade |
+| Recovery key | 🟢 Working | XFLS-XXXX format, download .txt |
+| Image upload to AppData | 🟢 Working | MIME validation, size limit |
+| Image listing/gallery | 🟢 Working | CSS grid, lazy loading |
+| Image viewer (fullscreen) | 🟢 Working | NcModal |
+| Image deletion | 🟢 Working | File + thumb + DB |
+| Thumbnail generation | 🟢 Working | 256x256 JPEG on upload |
+| Session timeout | 🟢 Working | Configurable (default 5min) |
+| Brute-force protection | 🟢 Working | Progressive throttling |
+| VaultSessionMiddleware | 🟢 Working | Gates all image endpoints |
+| Cross-user isolation | 🟢 Working | Ownership check on every query |
+| Security PoC (12/12 passed) | 🟢 Verified | See docs/security-poc-results.md |
+| Multi-select + batch actions | 📋 Planned | |
+| Files integration (Send to X-Files) | 📋 Planned | |
+| PIN unlock | 📋 Planned | v1.1 |
+| WebAuthn / FIDO2 | 📋 Planned | v1.2 |
+| Encryption at-rest | 📋 Planned | Future |
 | App Store publication | 📋 Planned | |
 
 ## Architecture
