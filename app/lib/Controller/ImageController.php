@@ -16,7 +16,6 @@ use OCP\AppFramework\Http\DataDownloadResponse;
 use OCP\AppFramework\Http\JSONResponse;
 use OCP\IRequest;
 use OCP\IUserSession;
-use Psr\Log\LoggerInterface;
 
 class ImageController extends Controller {
 
@@ -24,7 +23,6 @@ class ImageController extends Controller {
         IRequest $request,
         private ImageService $imageService,
         private IUserSession $userSession,
-        private LoggerInterface $logger,
     ) {
         parent::__construct(Application::APP_ID, $request);
     }
@@ -55,8 +53,11 @@ class ImageController extends Controller {
         }
 
         $file = $this->request->getUploadedFile('file');
-        if ($file === null || $file['error'] !== UPLOAD_ERR_OK) {
-            $errorCode = $file['error'] ?? UPLOAD_ERR_NO_FILE;
+        if (!is_array($file) || $file['error'] !== UPLOAD_ERR_OK) {
+            $errorCode = UPLOAD_ERR_NO_FILE;
+            if (is_array($file)) {
+                $errorCode = $file['error'];
+            }
             return new JSONResponse(
                 ['error' => $this->getUploadError($errorCode), 'code' => 'UPLOAD_FAILED'],
                 Http::STATUS_BAD_REQUEST

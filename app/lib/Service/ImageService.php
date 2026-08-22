@@ -11,7 +11,6 @@ use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\Files\IAppData;
 use OCP\Files\NotFoundException;
 use OCP\Files\SimpleFS\ISimpleFolder;
-use OCP\IConfig;
 use OCP\Security\ISecureRandom;
 use Psr\Log\LoggerInterface;
 
@@ -36,7 +35,6 @@ class ImageService {
         private VaultImageMapper $imageMapper,
         private VaultMapper $vaultMapper,
         private ISecureRandom $secureRandom,
-        private IConfig $config,
         private LoggerInterface $logger,
     ) {
     }
