@@ -166,6 +166,35 @@ class ImageController extends Controller {
         }
     }
 
+    /**
+     * Import a file from user's filesystem into the vault.
+     */
+    #[NoAdminRequired]
+    public function import(string $path): JSONResponse {
+        $userId = $this->getUserId();
+        if ($userId === null) {
+            return new JSONResponse(['error' => 'Not authenticated'], Http::STATUS_UNAUTHORIZED);
+        }
+
+        try {
+            $image = $this->imageService->importFromUserFiles($userId, $path);
+            return new JSONResponse([
+                'success' => true,
+                'image' => $image->toApi(),
+            ]);
+        } catch (InvalidImageException $e) {
+            return new JSONResponse(
+                ['error' => $e->getMessage(), 'code' => 'INVALID_IMAGE'],
+                Http::STATUS_BAD_REQUEST
+            );
+        } catch (VaultNotFoundException $e) {
+            return new JSONResponse(
+                ['error' => $e->getMessage(), 'code' => 'VAULT_NOT_FOUND'],
+                Http::STATUS_NOT_FOUND
+            );
+        }
+    }
+
     private function getUserId(): ?string {
         $user = $this->userSession->getUser();
         return $user?->getUID();

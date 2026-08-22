@@ -9,6 +9,7 @@ return [
         // Image operations (regular routes for binary + JSON)
         ['name' => 'image#index', 'url' => '/api/v1/images', 'verb' => 'GET'],
         ['name' => 'image#upload', 'url' => '/api/v1/images/upload', 'verb' => 'POST'],
+        ['name' => 'image#import', 'url' => '/api/v1/images/import', 'verb' => 'POST'],
         ['name' => 'image#show', 'url' => '/api/v1/images/{id}/download', 'verb' => 'GET'],
         ['name' => 'image#thumbnail', 'url' => '/api/v1/images/{id}/thumb', 'verb' => 'GET'],
         ['name' => 'image#destroy', 'url' => '/api/v1/images/{id}', 'verb' => 'DELETE'],

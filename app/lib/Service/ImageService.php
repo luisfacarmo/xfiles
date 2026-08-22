@@ -9,6 +9,7 @@ use OCA\XFiles\Db\VaultImageMapper;
 use OCA\XFiles\Db\VaultMapper;
 use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\Files\IAppData;
+use OCP\Files\IRootFolder;
 use OCP\Files\NotFoundException;
 use OCP\Files\SimpleFS\ISimpleFolder;
 use OCP\Security\ISecureRandom;
@@ -35,6 +36,7 @@ class ImageService {
         private VaultImageMapper $imageMapper,
         private VaultMapper $vaultMapper,
         private ISecureRandom $secureRandom,
+        private IRootFolder $rootFolder,
         private LoggerInterface $logger,
     ) {
     }
@@ -123,6 +125,52 @@ class ImageService {
         ]);
 
         return $image;
+    }
+
+    /**
+     * Import a file from user's Nextcloud filesystem into the vault.
+     *
+     * @throws InvalidImageException
+     * @throws VaultNotFoundException
+     */
+    public function importFromUserFiles(string $userId, string $path): VaultImage {
+        // Get user's folder
+        $userFolder = $this->rootFolder->getUserFolder($userId);
+
+        try {
+            $node = $userFolder->get($path);
+        } catch (NotFoundException) {
+            throw new InvalidImageException('File not found: ' . basename($path));
+        }
+
+        if (!($node instanceof \OCP\Files\File)) {
+            throw new InvalidImageException('Path is not a file');
+        }
+
+        // Write to temp file for processing (same pipeline as upload)
+        $tmpFile = tempnam(sys_get_temp_dir(), 'xfiles_import_');
+        try {
+            file_put_contents($tmpFile, $node->getContent());
+
+            $image = $this->upload(
+                $userId,
+                $tmpFile,
+                $node->getName(),
+                $node->getMimeType()
+            );
+
+            $this->logger->info('Image imported from Files to vault', [
+                'app' => 'xfiles',
+                'user' => $userId,
+                'path' => $path,
+            ]);
+
+            return $image;
+        } finally {
+            if (file_exists($tmpFile)) {
+                unlink($tmpFile);
+            }
+        }
     }
 
     /**

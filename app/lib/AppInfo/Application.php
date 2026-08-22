@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace OCA\XFiles\AppInfo;
 
+use OCA\Files\Event\LoadAdditionalScriptsEvent;
+use OCA\XFiles\Listener\LoadAdditionalScriptsListener;
 use OCA\XFiles\Middleware\VaultSessionMiddleware;
 use OCP\AppFramework\App;
 use OCP\AppFramework\Bootstrap\IBootContext;
@@ -20,6 +22,7 @@ class Application extends App implements IBootstrap {
 
     public function register(IRegistrationContext $context): void {
         $context->registerMiddleware(VaultSessionMiddleware::class);
+        $context->registerEventListener(LoadAdditionalScriptsEvent::class, LoadAdditionalScriptsListener::class);
     }
 
     public function boot(IBootContext $context): void {
