@@ -1,8 +1,36 @@
 <template>
-	<div class="xfiles-unlocked">
+	<div
+		class="xfiles-unlocked"
+		@dragover.prevent="onDragOver"
+		@dragleave.prevent="onDragLeave"
+		@drop.prevent="onDrop">
+		<!-- Header -->
 		<div class="xfiles-unlocked__header">
-			<h2>{{ t('xfiles', 'X-Files') }}</h2>
+			<div class="xfiles-unlocked__header-left">
+				<h2>{{ t('xfiles', 'X-Files') }}</h2>
+				<span v-if="autoLockSeconds > 0 && remainingSeconds > 0" class="xfiles-unlocked__countdown">
+					{{ formatCountdown(remainingSeconds) }}
+				</span>
+			</div>
 			<div class="xfiles-unlocked__actions">
+				<NcButton
+					v-if="selectMode && selected.length > 0"
+					type="error"
+					@click="onBatchDelete">
+					<template #icon>
+						<DeleteIcon :size="20" />
+					</template>
+					{{ t('xfiles', 'Delete ({count})', { count: selected.length }) }}
+				</NcButton>
+				<NcButton
+					type="tertiary"
+					:aria-label="t('xfiles', 'Select multiple')"
+					:class="{ 'xfiles-unlocked__select-active': selectMode }"
+					@click="toggleSelectMode">
+					<template #icon>
+						<CheckboxMultipleIcon :size="20" />
+					</template>
+				</NcButton>
 				<NcButton
 					type="secondary"
 					:aria-label="t('xfiles', 'Upload image')"
@@ -31,6 +59,20 @@
 			</div>
 		</div>
 
+		<!-- Upload progress bar -->
+		<div v-if="uploading" class="xfiles-unlocked__progress">
+			<div class="xfiles-unlocked__progress-bar" :style="{ width: uploadProgress + '%' }" />
+			<span class="xfiles-unlocked__progress-text">
+				{{ t('xfiles', 'Uploading {current}/{total}...', { current: uploadCurrent, total: uploadTotal }) }}
+			</span>
+		</div>
+
+		<!-- Drag and drop overlay -->
+		<div v-if="dragging" class="xfiles-unlocked__dropzone">
+			<ImageIcon :size="48" />
+			<p>{{ t('xfiles', 'Drop images here to add to vault') }}</p>
+		</div>
+
 		<!-- Loading state -->
 		<div v-if="loading" class="xfiles-unlocked__loading">
 			<NcLoadingIcon :size="44" />
@@ -38,9 +80,9 @@
 
 		<!-- Empty state -->
 		<NcEmptyContent
-			v-else-if="images.length === 0"
+			v-else-if="images.length === 0 && !dragging"
 			:name="t('xfiles', 'Your vault is empty')"
-			:description="t('xfiles', 'Upload photos to protect them in your vault.')">
+			:description="t('xfiles', 'Upload or drag photos to protect them in your vault.')">
 			<template #icon>
 				<ImageIcon :size="64" />
 			</template>
@@ -55,22 +97,29 @@
 		</NcEmptyContent>
 
 		<!-- Image grid -->
-		<div v-else class="xfiles-unlocked__grid">
+		<div v-else-if="!dragging" class="xfiles-unlocked__grid">
 			<div
 				v-for="image in images"
 				:key="image.id"
 				class="xfiles-unlocked__tile"
+				:class="{ 'xfiles-unlocked__tile--selected': isSelected(image.id) }"
 				tabindex="0"
 				role="button"
 				:aria-label="image.original_name"
-				@click="openViewer(image)"
-				@keydown.enter="openViewer(image)">
+				@click="onTileClick(image, $event)"
+				@keydown.enter="onTileClick(image, $event)">
 				<img
 					:src="getThumbnailUrl(image.id)"
 					:alt="image.original_name"
 					class="xfiles-unlocked__thumb"
 					loading="lazy">
-				<div class="xfiles-unlocked__tile-overlay">
+				<!-- Select checkbox -->
+				<div v-if="selectMode" class="xfiles-unlocked__tile-check">
+					<CheckboxIcon v-if="isSelected(image.id)" :size="22" />
+					<CheckboxBlankIcon v-else :size="22" />
+				</div>
+				<!-- Delete overlay (only in non-select mode) -->
+				<div v-if="!selectMode" class="xfiles-unlocked__tile-overlay">
 					<NcButton
 						type="tertiary"
 						class="xfiles-unlocked__delete-btn"
@@ -151,6 +200,9 @@ import NcButton from '@nextcloud/vue/dist/Components/NcButton.js'
 import NcEmptyContent from '@nextcloud/vue/dist/Components/NcEmptyContent.js'
 import NcLoadingIcon from '@nextcloud/vue/dist/Components/NcLoadingIcon.js'
 import NcModal from '@nextcloud/vue/dist/Components/NcModal.js'
+import CheckboxBlankIcon from 'vue-material-design-icons/CheckboxBlankOutline.vue'
+import CheckboxIcon from 'vue-material-design-icons/CheckboxMarked.vue'
+import CheckboxMultipleIcon from 'vue-material-design-icons/CheckboxMultipleMarked.vue'
 import CogIcon from 'vue-material-design-icons/Cog.vue'
 import DeleteIcon from 'vue-material-design-icons/Delete.vue'
 import DownloadIcon from 'vue-material-design-icons/Download.vue'
@@ -169,6 +221,9 @@ export default {
 		NcEmptyContent,
 		NcLoadingIcon,
 		NcModal,
+		CheckboxBlankIcon,
+		CheckboxIcon,
+		CheckboxMultipleIcon,
 		CogIcon,
 		DeleteIcon,
 		DownloadIcon,
@@ -183,20 +238,34 @@ export default {
 			total: 0,
 			loading: true,
 			uploading: false,
+			uploadCurrent: 0,
+			uploadTotal: 0,
+			uploadProgress: 0,
 			viewerImage: null,
 			showSettings: false,
 			autoLockSeconds: 300,
 			maxFileSizeMb: 50,
+			remainingSeconds: 0,
+			countdownInterval: null,
+			selectMode: false,
+			selected: [],
+			dragging: false,
 		}
 	},
 	async mounted() {
 		await this.fetchImages()
 		await this.fetchSettings()
+		this.startCountdown()
+	},
+	beforeDestroy() {
+		this.stopCountdown()
 	},
 	methods: {
 		t,
 		getImageUrl,
 		getThumbnailUrl,
+
+		// --- Data fetching ---
 		async fetchImages() {
 			this.loading = true
 			try {
@@ -205,7 +274,6 @@ export default {
 				this.total = data.total
 			} catch (e) {
 				if (e.response?.status === 403) {
-					// Vault locked (session expired)
 					this.$emit('locked')
 					return
 				}
@@ -214,35 +282,149 @@ export default {
 				this.loading = false
 			}
 		},
+		async fetchSettings() {
+			try {
+				const data = await getVaultStatus()
+				if (data.auto_lock_seconds !== undefined) {
+					this.autoLockSeconds = data.auto_lock_seconds
+				}
+				if (data.max_file_size_mb !== undefined) {
+					this.maxFileSizeMb = data.max_file_size_mb
+				}
+				if (data.remaining_seconds !== undefined) {
+					this.remainingSeconds = data.remaining_seconds
+				}
+			} catch (e) {
+				// Use defaults
+			}
+		},
+
+		// --- Countdown timer ---
+		startCountdown() {
+			if (this.autoLockSeconds <= 0) return
+			this.countdownInterval = setInterval(() => {
+				if (this.remainingSeconds > 0) {
+					this.remainingSeconds--
+				} else {
+					this.$emit('locked')
+				}
+			}, 1000)
+		},
+		stopCountdown() {
+			if (this.countdownInterval) {
+				clearInterval(this.countdownInterval)
+				this.countdownInterval = null
+			}
+		},
+		formatCountdown(seconds) {
+			const m = Math.floor(seconds / 60)
+			const s = seconds % 60
+			return `${m}:${s.toString().padStart(2, '0')}`
+		},
+
+		// --- Upload ---
 		triggerUpload() {
 			this.$refs.fileInput.click()
 		},
 		async onFileSelected(event) {
 			const files = Array.from(event.target.files)
 			if (files.length === 0) return
-
+			await this.processUploads(files)
+			this.$refs.fileInput.value = ''
+		},
+		async processUploads(files) {
 			this.uploading = true
+			this.uploadTotal = files.length
+			this.uploadCurrent = 0
+			this.uploadProgress = 0
 			let successCount = 0
 
 			for (const file of files) {
+				this.uploadCurrent++
+				this.uploadProgress = Math.round((this.uploadCurrent / this.uploadTotal) * 100)
 				try {
 					await uploadImage(file)
 					successCount++
 				} catch (e) {
-					const msg = e.response?.data?.ocs?.data?.error || file.name
+					const msg = e.response?.data?.error || file.name
 					showError(t('xfiles', 'Failed to upload: {name}', { name: msg }))
 				}
 			}
 
-			// Reset input
-			this.$refs.fileInput.value = ''
 			this.uploading = false
+			this.uploadProgress = 0
 
 			if (successCount > 0) {
 				showSuccess(t('xfiles', '{count} image(s) uploaded', { count: successCount }))
 				await this.fetchImages()
+				await this.fetchSettings() // refresh remaining_seconds
 			}
 		},
+
+		// --- Drag and drop ---
+		onDragOver() {
+			this.dragging = true
+		},
+		onDragLeave() {
+			this.dragging = false
+		},
+		async onDrop(event) {
+			this.dragging = false
+			const files = Array.from(event.dataTransfer.files).filter(
+				f => f.type.startsWith('image/'),
+			)
+			if (files.length === 0) {
+				showError(t('xfiles', 'Only image files are accepted'))
+				return
+			}
+			await this.processUploads(files)
+		},
+
+		// --- Selection ---
+		toggleSelectMode() {
+			this.selectMode = !this.selectMode
+			if (!this.selectMode) {
+				this.selected = []
+			}
+		},
+		isSelected(id) {
+			return this.selected.includes(id)
+		},
+		onTileClick(image, event) {
+			if (this.selectMode) {
+				if (this.isSelected(image.id)) {
+					this.selected = this.selected.filter(i => i !== image.id)
+				} else {
+					this.selected.push(image.id)
+				}
+			} else {
+				this.openViewer(image)
+			}
+		},
+		async onBatchDelete() {
+			const count = this.selected.length
+			if (!confirm(t('xfiles', 'Delete {count} image(s) permanently?', { count }))) {
+				return
+			}
+
+			let deleted = 0
+			for (const id of this.selected) {
+				try {
+					await deleteImage(id)
+					this.images = this.images.filter(i => i.id !== id)
+					this.total--
+					deleted++
+				} catch (e) {
+					// Continue with rest
+				}
+			}
+
+			this.selected = []
+			this.selectMode = false
+			showSuccess(t('xfiles', '{count} image(s) deleted', { count: deleted }))
+		},
+
+		// --- Viewer ---
 		openViewer(image) {
 			this.viewerImage = image
 		},
@@ -250,7 +432,6 @@ export default {
 			if (!confirm(t('xfiles', 'Delete "{name}" permanently?', { name: image.original_name }))) {
 				return
 			}
-
 			try {
 				await deleteImage(image.id)
 				this.images = this.images.filter(i => i.id !== image.id)
@@ -266,7 +447,6 @@ export default {
 			if (!confirm(t('xfiles', 'Delete "{name}" permanently?', { name: image.original_name }))) {
 				return
 			}
-
 			try {
 				await deleteImage(image.id)
 				this.images = this.images.filter(i => i.id !== image.id)
@@ -277,27 +457,18 @@ export default {
 				showError(t('xfiles', 'Failed to delete image'))
 			}
 		},
+
+		// --- Lock ---
 		async onLock() {
 			await lockVault()
 			this.$emit('locked')
-		},
-		async fetchSettings() {
-			try {
-				const data = await getVaultStatus()
-				if (data.auto_lock_seconds !== undefined) {
-					this.autoLockSeconds = data.auto_lock_seconds
-				}
-				if (data.max_file_size_mb !== undefined) {
-					this.maxFileSizeMb = data.max_file_size_mb
-				}
-			} catch (e) {
-				// Use defaults
-			}
 		},
 		onPasswordChanged() {
 			this.showSettings = false
 			this.$emit('locked')
 		},
+
+		// --- Formatting ---
 		formatSize(bytes) {
 			if (bytes < 1024) return bytes + ' B'
 			if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
@@ -312,6 +483,7 @@ export default {
 	display: flex;
 	flex-direction: column;
 	height: 100%;
+	position: relative;
 }
 
 .xfiles-unlocked__header {
@@ -323,15 +495,73 @@ export default {
 	flex-shrink: 0;
 }
 
+.xfiles-unlocked__header-left {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+}
+
 .xfiles-unlocked__header h2 {
 	margin: 0;
 	font-size: 1.2em;
+}
+
+.xfiles-unlocked__countdown {
+	font-size: 0.85em;
+	color: var(--color-text-maxcontrast);
+	font-variant-numeric: tabular-nums;
 }
 
 .xfiles-unlocked__actions {
 	display: flex;
 	gap: 4px;
 	align-items: center;
+}
+
+.xfiles-unlocked__select-active {
+	color: var(--color-primary-element) !important;
+}
+
+/* Progress bar */
+.xfiles-unlocked__progress {
+	position: relative;
+	height: 24px;
+	background: var(--color-background-dark);
+	flex-shrink: 0;
+}
+
+.xfiles-unlocked__progress-bar {
+	height: 100%;
+	background: var(--color-primary-element);
+	transition: width 0.3s;
+}
+
+.xfiles-unlocked__progress-text {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	font-size: 0.8em;
+	font-weight: 500;
+	color: var(--color-primary-element-text);
+}
+
+/* Drag and drop overlay */
+.xfiles-unlocked__dropzone {
+	position: absolute;
+	inset: 0;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 12px;
+	background: rgba(var(--color-primary-element-rgb, 0, 130, 201), 0.1);
+	border: 3px dashed var(--color-primary-element);
+	border-radius: var(--border-radius-large);
+	z-index: 10;
+	color: var(--color-primary-element);
+	font-size: 1.1em;
+	pointer-events: none;
 }
 
 .xfiles-unlocked__loading {
@@ -359,10 +589,23 @@ export default {
 	background: var(--color-background-dark);
 }
 
+.xfiles-unlocked__tile--selected {
+	outline: 3px solid var(--color-primary-element);
+	outline-offset: -3px;
+}
+
 .xfiles-unlocked__thumb {
 	width: 100%;
 	height: 100%;
 	object-fit: cover;
+}
+
+.xfiles-unlocked__tile-check {
+	position: absolute;
+	top: 6px;
+	left: 6px;
+	color: var(--color-primary-element);
+	filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5));
 }
 
 .xfiles-unlocked__tile-overlay {

@@ -11,3 +11,8 @@ parameters:
         - '#Call to method .+ on an unknown class Doctrine\\DBAL\\Schema\\Table#'
         # OCP stubs type DataResponse constructor as stdClass, but arrays work at runtime
         - '#Parameter \#1 \$data of class OCP\\AppFramework\\Http\\DataResponse constructor expects#'
+        # OCA\Files event class is in the Files app, not in OCP stubs
+        - '#OCA\\Files\\Event\\LoadAdditionalScriptsEvent#'
+        # registerEventListener generic type can't be verified without the event class stubs
+        - '#Parameter \#2 \$listener of method OCP\\AppFramework\\Bootstrap\\IRegistrationContext::registerEventListener#'
+    reportUnmatchedIgnoredErrors: false
