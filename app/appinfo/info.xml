@@ -49,6 +49,11 @@ Lock your secrets. Trust no one.
         <php min-version="8.2"/>
     </dependencies>
 
+    <settings>
+        <admin>OCA\XFiles\Settings\AdminSettings</admin>
+        <admin-section>OCA\XFiles\Settings\AdminSection</admin-section>
+    </settings>
+
     <navigations>
         <navigation>
             <name>X-Files</name>

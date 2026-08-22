@@ -63,7 +63,22 @@ const sendToVaultAction = new FileAction({
 	async execBatch(files) {
 		const results = []
 		for (const file of files) {
-			results.push(await this.exec(file, null, ''))
+			try {
+				const url = generateUrl('/apps/xfiles/api/v1/images/import')
+				const response = await axios.post(url, {
+					path: file.path,
+				})
+				results.push(response.data?.success ? true : false)
+			} catch (e) {
+				results.push(false)
+			}
+		}
+		const successCount = results.filter(r => r).length
+		if (successCount > 0) {
+			showSuccess(t('xfiles', '{count} image(s) sent to X-Files vault', { count: successCount }))
+		}
+		if (successCount < files.length) {
+			showError(t('xfiles', '{count} image(s) failed', { count: files.length - successCount }))
 		}
 		return results
 	},

@@ -129,18 +129,29 @@ class ImageService {
 
     /**
      * Import a file from user's Nextcloud filesystem into the vault.
+     * Resolves by fileId (preferred) or path.
      *
      * @throws InvalidImageException
      * @throws VaultNotFoundException
      */
-    public function importFromUserFiles(string $userId, string $path): VaultImage {
-        // Get user's folder
+    public function importFromUserFiles(string $userId, ?int $fileId = null, ?string $path = null): VaultImage {
         $userFolder = $this->rootFolder->getUserFolder($userId);
+        $node = null;
 
-        try {
-            $node = $userFolder->get($path);
-        } catch (NotFoundException) {
-            throw new InvalidImageException('File not found: ' . basename($path));
+        if ($fileId !== null) {
+            $nodes = $userFolder->getById($fileId);
+            if (empty($nodes)) {
+                throw new InvalidImageException('File not found (id: ' . $fileId . ')');
+            }
+            $node = $nodes[0];
+        } elseif ($path !== null) {
+            try {
+                $node = $userFolder->get($path);
+            } catch (NotFoundException) {
+                throw new InvalidImageException('File not found: ' . basename($path));
+            }
+        } else {
+            throw new InvalidImageException('Either fileId or path is required');
         }
 
         if (!($node instanceof \OCP\Files\File)) {
@@ -162,7 +173,8 @@ class ImageService {
             $this->logger->info('Image imported from Files to vault', [
                 'app' => 'xfiles',
                 'user' => $userId,
-                'path' => $path,
+                'fileId' => $fileId,
+                'path' => $path ?? $node->getPath(),
             ]);
 
             return $image;

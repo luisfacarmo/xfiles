@@ -168,16 +168,24 @@ class ImageController extends Controller {
 
     /**
      * Import a file from user's filesystem into the vault.
+     * Accepts either fileId (preferred) or path.
      */
     #[NoAdminRequired]
-    public function import(string $path): JSONResponse {
+    public function import(?int $fileId = null, ?string $path = null): JSONResponse {
         $userId = $this->getUserId();
         if ($userId === null) {
             return new JSONResponse(['error' => 'Not authenticated'], Http::STATUS_UNAUTHORIZED);
         }
 
+        if ($fileId === null && $path === null) {
+            return new JSONResponse(
+                ['error' => 'Either fileId or path is required', 'code' => 'BAD_REQUEST'],
+                Http::STATUS_BAD_REQUEST
+            );
+        }
+
         try {
-            $image = $this->imageService->importFromUserFiles($userId, $path);
+            $image = $this->imageService->importFromUserFiles($userId, $fileId, $path);
             return new JSONResponse([
                 'success' => true,
                 'image' => $image->toApi(),
