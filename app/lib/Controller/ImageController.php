@@ -11,6 +11,7 @@ use OCA\XFiles\Service\VaultNotFoundException;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
+use OCP\AppFramework\Http\Attribute\NoCSRFRequired;
 use OCP\AppFramework\Http\DataDownloadResponse;
 use OCP\AppFramework\Http\JSONResponse;
 use OCP\IRequest;
@@ -32,6 +33,7 @@ class ImageController extends Controller {
      * List vault images (paginated).
      */
     #[NoAdminRequired]
+    #[NoCSRFRequired]
     public function index(int $limit = 100, int $offset = 0): JSONResponse {
         $userId = $this->getUserId();
         if ($userId === null) {
@@ -89,6 +91,7 @@ class ImageController extends Controller {
      * Download full image.
      */
     #[NoAdminRequired]
+    #[NoCSRFRequired]
     public function show(int $id): DataDownloadResponse|JSONResponse {
         $userId = $this->getUserId();
         if ($userId === null) {
@@ -116,6 +119,7 @@ class ImageController extends Controller {
      * Get image thumbnail.
      */
     #[NoAdminRequired]
+    #[NoCSRFRequired]
     public function thumbnail(int $id): DataDownloadResponse|JSONResponse {
         $userId = $this->getUserId();
         if ($userId === null) {
