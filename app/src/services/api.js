@@ -1,8 +1,10 @@
 import axios from '@nextcloud/axios'
-import { generateOcsUrl } from '@nextcloud/router'
+import { generateOcsUrl, generateUrl } from '@nextcloud/router'
 
 const baseUrl = generateOcsUrl('apps/xfiles/api/v1')
+const appBaseUrl = generateUrl('/apps/xfiles')
 
+// Vault lifecycle
 export async function getVaultStatus() {
 	const response = await axios.get(`${baseUrl}/vault/status`)
 	return response.data.ocs.data
@@ -29,4 +31,34 @@ export async function recoverVault(recoveryKey, newPassword) {
 		new_password: newPassword,
 	})
 	return response.data.ocs.data
+}
+
+// Images
+export async function listImages(limit = 100, offset = 0) {
+	const response = await axios.get(`${appBaseUrl}/api/v1/images`, {
+		params: { limit, offset },
+	})
+	return response.data
+}
+
+export async function uploadImage(file) {
+	const formData = new FormData()
+	formData.append('file', file)
+	const response = await axios.post(`${appBaseUrl}/api/v1/images/upload`, formData, {
+		headers: { 'Content-Type': 'multipart/form-data' },
+	})
+	return response.data
+}
+
+export async function deleteImage(id) {
+	const response = await axios.delete(`${appBaseUrl}/api/v1/images/${id}`)
+	return response.data
+}
+
+export function getImageUrl(id) {
+	return `${appBaseUrl}/api/v1/images/${id}/download`
+}
+
+export function getThumbnailUrl(id) {
+	return `${appBaseUrl}/api/v1/images/${id}/thumb`
 }
