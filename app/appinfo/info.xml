@@ -16,6 +16,17 @@ WebDAV, and Search.
 - Brute-force protection on unlock attempts
 - Thumbnail gallery when unlocked
 - Recovery key for password reset
+- Download recovery key as formatted text file
+- Change password and settings from within the vault
+- Auto-lock when browser tab is closed
+
+**Security:**
+- Images stored in AppData (not in user filesystem)
+- Other apps (Files, Photos, Memories) cannot see vault content
+- WebDAV and desktop/mobile clients cannot access vault images
+- Vault password hashed with Argon2id
+- Session-based unlock with configurable timeout
+- Brute-force and rate-limit protection
 
 Lock your secrets. Trust no one.
     ]]></description>
@@ -28,6 +39,10 @@ Lock your secrets. Trust no one.
 
     <bugs>https://github.com/luisfacarmo/xfiles/issues</bugs>
     <repository>https://github.com/luisfacarmo/xfiles</repository>
+
+    <screenshot>https://raw.githubusercontent.com/luisfacarmo/xfiles/master/docs/screenshots/locked.png</screenshot>
+    <screenshot>https://raw.githubusercontent.com/luisfacarmo/xfiles/master/docs/screenshots/gallery.png</screenshot>
+    <screenshot>https://raw.githubusercontent.com/luisfacarmo/xfiles/master/docs/screenshots/viewer.png</screenshot>
 
     <dependencies>
         <nextcloud min-version="28" max-version="34"/>
