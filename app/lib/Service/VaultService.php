@@ -35,6 +35,7 @@ class VaultService {
             return [
                 'status' => 'unlocked',
                 'auto_lock_seconds' => $autoLock,
+                'max_file_size_mb' => $vault->getMaxFileSizeMb(),
                 'remaining_seconds' => $this->sessionService->getRemainingSeconds($autoLock),
             ];
         }
@@ -42,6 +43,7 @@ class VaultService {
         return [
             'status' => 'locked',
             'auto_lock_seconds' => $autoLock,
+            'max_file_size_mb' => $vault->getMaxFileSizeMb(),
         ];
     }
 
@@ -180,6 +182,24 @@ class VaultService {
         $this->vaultMapper->update($vault);
 
         $this->sessionService->lock();
+    }
+
+    /**
+     * Update vault settings.
+     *
+     * @throws VaultNotFoundException
+     */
+    public function updateSettings(string $userId, int $autoLockSeconds, int $maxFileSizeMb): void {
+        $vault = $this->getVaultOrFail($userId);
+
+        // Validate ranges
+        $autoLockSeconds = max(0, min($autoLockSeconds, 86400)); // 0 = never, max 24h
+        $maxFileSizeMb = max(1, min($maxFileSizeMb, 500)); // 1MB to 500MB
+
+        $vault->setAutoLockSeconds($autoLockSeconds);
+        $vault->setMaxFileSizeMb($maxFileSizeMb);
+        $vault->setUpdatedAt(date('Y-m-d H:i:s'));
+        $this->vaultMapper->update($vault);
     }
 
     /**

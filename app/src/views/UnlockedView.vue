@@ -14,6 +14,14 @@
 				</NcButton>
 				<NcButton
 					type="tertiary"
+					:aria-label="t('xfiles', 'Settings')"
+					@click="showSettings = !showSettings">
+					<template #icon>
+						<CogIcon :size="20" />
+					</template>
+				</NcButton>
+				<NcButton
+					type="tertiary"
 					:aria-label="t('xfiles', 'Lock vault')"
 					@click="onLock">
 					<template #icon>
@@ -87,6 +95,27 @@
 					:src="getImageUrl(viewerImage.id)"
 					:alt="viewerImage.original_name"
 					class="xfiles-viewer__img">
+				<div class="xfiles-viewer__actions">
+					<NcButton
+						type="secondary"
+						:aria-label="t('xfiles', 'Download')"
+						:href="getImageUrl(viewerImage.id)"
+						:download="viewerImage.original_name">
+						<template #icon>
+							<DownloadIcon :size="20" />
+						</template>
+						{{ t('xfiles', 'Download') }}
+					</NcButton>
+					<NcButton
+						type="error"
+						:aria-label="t('xfiles', 'Delete')"
+						@click="onDeleteFromViewer">
+						<template #icon>
+							<DeleteIcon :size="20" />
+						</template>
+						{{ t('xfiles', 'Delete') }}
+					</NcButton>
+				</div>
 				<div class="xfiles-viewer__info">
 					<span>{{ viewerImage.original_name }}</span>
 					<span>{{ formatSize(viewerImage.size) }}</span>
@@ -103,6 +132,17 @@
 			multiple
 			class="xfiles-unlocked__file-input"
 			@change="onFileSelected">
+
+		<!-- Settings panel -->
+		<NcModal
+			v-if="showSettings"
+			:name="t('xfiles', 'Settings')"
+			@close="showSettings = false">
+			<SettingsView
+				:initial-auto-lock-seconds="autoLockSeconds"
+				:initial-max-file-size-mb="maxFileSizeMb"
+				@password-changed="onPasswordChanged" />
+		</NcModal>
 	</div>
 </template>
 
@@ -111,13 +151,16 @@ import NcButton from '@nextcloud/vue/dist/Components/NcButton.js'
 import NcEmptyContent from '@nextcloud/vue/dist/Components/NcEmptyContent.js'
 import NcLoadingIcon from '@nextcloud/vue/dist/Components/NcLoadingIcon.js'
 import NcModal from '@nextcloud/vue/dist/Components/NcModal.js'
+import CogIcon from 'vue-material-design-icons/Cog.vue'
 import DeleteIcon from 'vue-material-design-icons/Delete.vue'
+import DownloadIcon from 'vue-material-design-icons/Download.vue'
 import ImageIcon from 'vue-material-design-icons/Image.vue'
 import LockIcon from 'vue-material-design-icons/Lock.vue'
 import PlusIcon from 'vue-material-design-icons/Plus.vue'
 import { showError, showSuccess } from '@nextcloud/dialogs'
 import { translate as t } from '@nextcloud/l10n'
-import { listImages, uploadImage, deleteImage, lockVault, getImageUrl, getThumbnailUrl } from '../services/api.js'
+import { listImages, uploadImage, deleteImage, lockVault, getImageUrl, getThumbnailUrl, getVaultStatus } from '../services/api.js'
+import SettingsView from './SettingsView.vue'
 
 export default {
 	name: 'UnlockedView',
@@ -126,10 +169,13 @@ export default {
 		NcEmptyContent,
 		NcLoadingIcon,
 		NcModal,
+		CogIcon,
 		DeleteIcon,
+		DownloadIcon,
 		ImageIcon,
 		LockIcon,
 		PlusIcon,
+		SettingsView,
 	},
 	data() {
 		return {
@@ -138,10 +184,14 @@ export default {
 			loading: true,
 			uploading: false,
 			viewerImage: null,
+			showSettings: false,
+			autoLockSeconds: 300,
+			maxFileSizeMb: 50,
 		}
 	},
 	async mounted() {
 		await this.fetchImages()
+		await this.fetchSettings()
 	},
 	methods: {
 		t,
@@ -210,8 +260,42 @@ export default {
 				showError(t('xfiles', 'Failed to delete image'))
 			}
 		},
+		async onDeleteFromViewer() {
+			const image = this.viewerImage
+			if (!image) return
+			if (!confirm(t('xfiles', 'Delete "{name}" permanently?', { name: image.original_name }))) {
+				return
+			}
+
+			try {
+				await deleteImage(image.id)
+				this.images = this.images.filter(i => i.id !== image.id)
+				this.total--
+				this.viewerImage = null
+				showSuccess(t('xfiles', 'Image deleted'))
+			} catch (e) {
+				showError(t('xfiles', 'Failed to delete image'))
+			}
+		},
 		async onLock() {
 			await lockVault()
+			this.$emit('locked')
+		},
+		async fetchSettings() {
+			try {
+				const data = await getVaultStatus()
+				if (data.auto_lock_seconds !== undefined) {
+					this.autoLockSeconds = data.auto_lock_seconds
+				}
+				if (data.max_file_size_mb !== undefined) {
+					this.maxFileSizeMb = data.max_file_size_mb
+				}
+			} catch (e) {
+				// Use defaults
+			}
+		},
+		onPasswordChanged() {
+			this.showSettings = false
 			this.$emit('locked')
 		},
 		formatSize(bytes) {
@@ -326,6 +410,12 @@ export default {
 	max-height: 70vh;
 	object-fit: contain;
 	border-radius: var(--border-radius);
+}
+
+.xfiles-viewer__actions {
+	display: flex;
+	gap: 8px;
+	margin-top: 12px;
 }
 
 .xfiles-viewer__info {

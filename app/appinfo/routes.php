@@ -20,5 +20,7 @@ return [
         ['name' => 'vault#unlock', 'url' => '/api/v1/vault/unlock', 'verb' => 'POST'],
         ['name' => 'vault#lock', 'url' => '/api/v1/vault/lock', 'verb' => 'POST'],
         ['name' => 'vault#recover', 'url' => '/api/v1/vault/recover', 'verb' => 'POST'],
+        ['name' => 'vault#change_password', 'url' => '/api/v1/vault/password', 'verb' => 'POST'],
+        ['name' => 'vault#update_settings', 'url' => '/api/v1/vault/settings', 'verb' => 'POST'],
     ],
 ];

@@ -24,7 +24,7 @@ import NcLoadingIcon from '@nextcloud/vue/dist/Components/NcLoadingIcon.js'
 import SetupView from './views/SetupView.vue'
 import LockedView from './views/LockedView.vue'
 import UnlockedView from './views/UnlockedView.vue'
-import { getVaultStatus } from './services/api.js'
+import { getVaultStatus, lockVault } from './services/api.js'
 
 export default {
 	name: 'App',
@@ -44,6 +44,10 @@ export default {
 	},
 	async mounted() {
 		await this.fetchStatus()
+		document.addEventListener('visibilitychange', this.onVisibilityChange)
+	},
+	beforeDestroy() {
+		document.removeEventListener('visibilitychange', this.onVisibilityChange)
 	},
 	methods: {
 		async fetchStatus() {
@@ -66,6 +70,16 @@ export default {
 		},
 		onLocked() {
 			this.state = 'locked'
+		},
+		async onVisibilityChange() {
+			if (document.hidden && this.state === 'unlocked') {
+				try {
+					await lockVault()
+				} catch (e) {
+					// Silent fail — vault will timeout server-side anyway
+				}
+				this.state = 'locked'
+			}
 		},
 	},
 }

@@ -154,6 +154,57 @@ class VaultController extends OCSController {
         }
     }
 
+    /**
+     * Change vault password.
+     */
+    #[NoAdminRequired]
+    #[BruteForceProtection(action: 'xfiles_change_password')]
+    #[UserRateLimit(limit: 3, period: 300)]
+    public function changePassword(string $current_password, string $new_password): DataResponse {
+        $userId = $this->getUserId();
+        if ($userId === null) {
+            return new DataResponse(['error' => 'Not authenticated'], Http::STATUS_UNAUTHORIZED);
+        }
+
+        try {
+            $this->vaultService->changePassword($userId, $current_password, $new_password);
+            return new DataResponse(['success' => true]);
+        } catch (VaultNotFoundException $e) {
+            return new DataResponse(
+                ['error' => 'Vault not found', 'code' => 'VAULT_NOT_FOUND'],
+                Http::STATUS_NOT_FOUND
+            );
+        } catch (InvalidPasswordException $e) {
+            $response = new DataResponse(
+                ['error' => $e->getMessage(), 'code' => 'INVALID_PASSWORD'],
+                Http::STATUS_FORBIDDEN
+            );
+            $response->throttle();
+            return $response;
+        }
+    }
+
+    /**
+     * Update vault settings (auto_lock_seconds, max_file_size_mb).
+     */
+    #[NoAdminRequired]
+    public function updateSettings(int $auto_lock_seconds, int $max_file_size_mb): DataResponse {
+        $userId = $this->getUserId();
+        if ($userId === null) {
+            return new DataResponse(['error' => 'Not authenticated'], Http::STATUS_UNAUTHORIZED);
+        }
+
+        try {
+            $this->vaultService->updateSettings($userId, $auto_lock_seconds, $max_file_size_mb);
+            return new DataResponse(['success' => true]);
+        } catch (VaultNotFoundException $e) {
+            return new DataResponse(
+                ['error' => 'Vault not found', 'code' => 'VAULT_NOT_FOUND'],
+                Http::STATUS_NOT_FOUND
+            );
+        }
+    }
+
     private function getUserId(): ?string {
         $user = $this->userSession->getUser();
         return $user?->getUID();

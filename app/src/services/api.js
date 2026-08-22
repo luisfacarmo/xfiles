@@ -33,6 +33,22 @@ export async function recoverVault(recoveryKey, newPassword) {
 	return response.data.ocs.data
 }
 
+export async function changeVaultPassword(currentPassword, newPassword) {
+	const response = await axios.post(`${baseUrl}/vault/password`, {
+		current_password: currentPassword,
+		new_password: newPassword,
+	})
+	return response.data.ocs.data
+}
+
+export async function updateVaultSettings(autoLockSeconds, maxFileSizeMb) {
+	const response = await axios.post(`${baseUrl}/vault/settings`, {
+		auto_lock_seconds: autoLockSeconds,
+		max_file_size_mb: maxFileSizeMb,
+	})
+	return response.data.ocs.data
+}
+
 // Images
 export async function listImages(limit = 100, offset = 0) {
 	const response = await axios.get(`${appBaseUrl}/api/v1/images`, {
