@@ -13,6 +13,8 @@ import axios from '@nextcloud/axios'
 import { showSuccess, showError, showWarning } from '@nextcloud/dialogs'
 import { translate as t } from '@nextcloud/l10n'
 
+console.info('[X-Files] init.js loaded — registering Classify action')
+
 const lockSvg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="currentColor" d="M12 17a2 2 0 0 1-2-2c0-1.11.89-2 2-2a2 2 0 0 1 2 2 2 2 0 0 1-2 2m6 3V10H6v10h12m0-12a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V10c0-1.11.89-2 2-2h1V6a5 5 0 0 1 5-5 5 5 0 0 1 5 5v2h1m-6-5a3 3 0 0 0-3 3v2h6V6a3 3 0 0 0-3-3Z"/></svg>'
 
 const imageMimes = [
@@ -99,15 +101,19 @@ const classifyAction = new FileAction({
 	},
 
 	enabled({ nodes }) {
+		console.debug('[X-Files] enabled() called, nodes:', nodes?.length, 'first mime:', nodes?.[0]?.mime)
 		if (!nodes || nodes.length === 0) {
 			return false
 		}
-		return nodes.every(
+		const result = nodes.every(
 			(node) => node.mime && imageMimes.includes(node.mime),
 		)
+		console.debug('[X-Files] enabled() result:', result)
+		return result
 	},
 
 	async exec({ nodes }) {
+		console.debug('[X-Files] exec() called, nodes:', nodes?.length)
 		const node = nodes[0]
 		if (!node) {
 			showError(t('xfiles', 'No file selected'))
@@ -171,3 +177,4 @@ const classifyAction = new FileAction({
 })
 
 registerFileAction(classifyAction)
+console.info('[X-Files] Classify action registered. Total actions:', window._nc_fileactions?.length)
