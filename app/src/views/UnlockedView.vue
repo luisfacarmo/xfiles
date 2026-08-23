@@ -627,28 +627,25 @@ export default {
 }
 
 .xfiles-unlocked__grid {
-	display: grid;
-	grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+	display: flex;
+	flex-wrap: wrap;
 	gap: 8px;
 	padding: 12px;
 	overflow-y: auto;
 	flex: 1;
 	min-height: 0;
+	align-content: flex-start;
 }
 
 .xfiles-unlocked__tile {
 	position: relative;
+	width: 160px;
+	height: 160px;
 	overflow: hidden;
 	border-radius: var(--border-radius);
 	cursor: pointer;
 	background: var(--color-background-dark);
-}
-
-/* padding-bottom trick ensures perfect squares regardless of aspect-ratio support */
-.xfiles-unlocked__tile::before {
-	content: '';
-	display: block;
-	padding-bottom: 100%;
+	flex-shrink: 0;
 }
 
 .xfiles-unlocked__tile--selected {
@@ -657,9 +654,6 @@ export default {
 }
 
 .xfiles-unlocked__thumb {
-	position: absolute;
-	top: 0;
-	left: 0;
 	width: 100%;
 	height: 100%;
 	object-fit: cover;
