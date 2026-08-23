@@ -7,7 +7,7 @@
 		<!-- Header -->
 		<div class="xfiles-unlocked__header">
 			<div class="xfiles-unlocked__header-left">
-				<h2>{{ t('xfiles', 'X-Files') }}</h2>
+				<h2>{{ t('xfiles', 'X-Files') }} <small v-if="total > 0" style="font-weight:normal;opacity:0.6">{{ total }}</small></h2>
 				<span v-if="autoLockSeconds > 0 && remainingSeconds > 0" class="xfiles-unlocked__countdown">
 					{{ formatCountdown(remainingSeconds) }}
 				</span>
@@ -139,11 +139,33 @@
 			:name="viewerImage.original_name"
 			size="large"
 			@close="viewerImage = null">
-			<div class="xfiles-viewer">
+			<div class="xfiles-viewer" @keydown="onViewerKeydown" tabindex="0">
+				<!-- Prev button -->
+				<button
+					v-if="hasPrev"
+					class="xfiles-viewer__nav xfiles-viewer__nav--prev"
+					:aria-label="t('xfiles', 'Previous image')"
+					@click="viewerPrev">
+					<ChevronLeftIcon :size="36" />
+				</button>
+
 				<img
 					:src="getImageUrl(viewerImage.id)"
 					:alt="viewerImage.original_name"
 					class="xfiles-viewer__img">
+
+				<!-- Next button -->
+				<button
+					v-if="hasNext"
+					class="xfiles-viewer__nav xfiles-viewer__nav--next"
+					:aria-label="t('xfiles', 'Next image')"
+					@click="viewerNext">
+					<ChevronRightIcon :size="36" />
+				</button>
+
+				<div class="xfiles-viewer__counter">
+					{{ viewerIndex + 1 }} / {{ images.length }}
+				</div>
 				<div class="xfiles-viewer__actions">
 					<NcButton
 						type="secondary"
@@ -203,6 +225,8 @@ import NcModal from '@nextcloud/vue/dist/Components/NcModal.js'
 import CheckboxBlankIcon from 'vue-material-design-icons/CheckboxBlankOutline.vue'
 import CheckboxIcon from 'vue-material-design-icons/CheckboxMarked.vue'
 import CheckboxMultipleIcon from 'vue-material-design-icons/CheckboxMultipleMarked.vue'
+import ChevronLeftIcon from 'vue-material-design-icons/ChevronLeft.vue'
+import ChevronRightIcon from 'vue-material-design-icons/ChevronRight.vue'
 import CogIcon from 'vue-material-design-icons/Cog.vue'
 import DeleteIcon from 'vue-material-design-icons/Delete.vue'
 import DownloadIcon from 'vue-material-design-icons/Download.vue'
@@ -224,6 +248,8 @@ export default {
 		CheckboxBlankIcon,
 		CheckboxIcon,
 		CheckboxMultipleIcon,
+		ChevronLeftIcon,
+		ChevronRightIcon,
 		CogIcon,
 		DeleteIcon,
 		DownloadIcon,
@@ -252,6 +278,18 @@ export default {
 			dragging: false,
 		}
 	},
+	computed: {
+		viewerIndex() {
+			if (!this.viewerImage) return -1
+			return this.images.findIndex(i => i.id === this.viewerImage.id)
+		},
+		hasPrev() {
+			return this.viewerIndex > 0
+		},
+		hasNext() {
+			return this.viewerIndex >= 0 && this.viewerIndex < this.images.length - 1
+		},
+	},
 	async mounted() {
 		await this.fetchImages()
 		await this.fetchSettings()
@@ -269,7 +307,7 @@ export default {
 		async fetchImages() {
 			this.loading = true
 			try {
-				const data = await listImages()
+				const data = await listImages(500, 0)
 				this.images = data.images
 				this.total = data.total
 			} catch (e) {
@@ -428,6 +466,23 @@ export default {
 		openViewer(image) {
 			this.viewerImage = image
 		},
+		viewerPrev() {
+			if (this.hasPrev) {
+				this.viewerImage = this.images[this.viewerIndex - 1]
+			}
+		},
+		viewerNext() {
+			if (this.hasNext) {
+				this.viewerImage = this.images[this.viewerIndex + 1]
+			}
+		},
+		onViewerKeydown(event) {
+			if (event.key === 'ArrowLeft') {
+				this.viewerPrev()
+			} else if (event.key === 'ArrowRight') {
+				this.viewerNext()
+			}
+		},
 		async onDelete(image) {
 			if (!confirm(t('xfiles', 'Delete "{name}" permanently?', { name: image.original_name }))) {
 				return
@@ -574,19 +629,25 @@ export default {
 .xfiles-unlocked__grid {
 	display: grid;
 	grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-	gap: 4px;
-	padding: 8px;
+	gap: 8px;
+	padding: 12px;
 	overflow-y: auto;
 	flex: 1;
 }
 
 .xfiles-unlocked__tile {
 	position: relative;
-	aspect-ratio: 1;
 	overflow: hidden;
 	border-radius: var(--border-radius);
 	cursor: pointer;
 	background: var(--color-background-dark);
+}
+
+/* padding-bottom trick ensures perfect squares regardless of aspect-ratio support */
+.xfiles-unlocked__tile::before {
+	content: '';
+	display: block;
+	padding-bottom: 100%;
 }
 
 .xfiles-unlocked__tile--selected {
@@ -595,6 +656,9 @@ export default {
 }
 
 .xfiles-unlocked__thumb {
+	position: absolute;
+	top: 0;
+	left: 0;
 	width: 100%;
 	height: 100%;
 	object-fit: cover;
@@ -646,13 +710,51 @@ export default {
 	align-items: center;
 	padding: 16px;
 	max-height: 80vh;
+	position: relative;
 }
 
 .xfiles-viewer__img {
 	max-width: 100%;
-	max-height: 70vh;
+	max-height: 60vh;
 	object-fit: contain;
 	border-radius: var(--border-radius);
+}
+
+.xfiles-viewer__nav {
+	position: absolute;
+	top: 50%;
+	transform: translateY(-50%);
+	background: rgba(0, 0, 0, 0.5);
+	color: white;
+	border: none;
+	border-radius: 50%;
+	width: 44px;
+	height: 44px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	cursor: pointer;
+	z-index: 10;
+	transition: background 0.15s;
+}
+
+.xfiles-viewer__nav:hover {
+	background: rgba(0, 0, 0, 0.75);
+}
+
+.xfiles-viewer__nav--prev {
+	left: 12px;
+}
+
+.xfiles-viewer__nav--next {
+	right: 12px;
+}
+
+.xfiles-viewer__counter {
+	margin-top: 8px;
+	font-size: 0.85em;
+	color: var(--color-text-maxcontrast);
+	font-variant-numeric: tabular-nums;
 }
 
 .xfiles-viewer__actions {
