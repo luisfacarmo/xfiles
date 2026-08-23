@@ -628,11 +628,12 @@ export default {
 
 .xfiles-unlocked__grid {
 	display: grid;
-	grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+	grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
 	gap: 8px;
 	padding: 12px;
 	overflow-y: auto;
 	flex: 1;
+	min-height: 0;
 }
 
 .xfiles-unlocked__tile {
