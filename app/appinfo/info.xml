@@ -45,7 +45,7 @@ Lock your secrets. Trust no one.
     <screenshot>https://raw.githubusercontent.com/luisfacarmo/xfiles/master/docs/screenshots/viewer.png</screenshot>
 
     <dependencies>
-        <nextcloud min-version="28" max-version="34"/>
+        <nextcloud min-version="28" max-version="35"/>
         <php min-version="8.2"/>
     </dependencies>
 
