@@ -11,8 +11,8 @@
 >
 > — Named after the classified cases that nobody was supposed to access.
 
-> [!WARNING]
-> X-Files is in early development (pre-alpha). Not ready for production use.
+> [!NOTE]
+> X-Files v0.1.0 is the first stable release. App Store publication is pending certificate signing ([PR #1179](https://github.com/nextcloud/app-certificate-requests/pull/1179)).
 
 ## What is this?
 
@@ -24,33 +24,43 @@ Think Google Photos Locked Folder or Samsung Secure Folder, but self-hosted.
 
 - **Real isolation** — files stored in AppData, not in your user filesystem
 - **Independent password** — vault password is separate from your Nextcloud login
-- **Session-based unlock** — auto-locks after timeout or manual lock
+- **Session-based unlock** — auto-locks after timeout, tab close, or manual lock
 - **Brute-force protected** — progressive throttling on failed attempts
+- **Files integration** — right-click any image in Files → "Send to X-Files" (classify action)
 - **Honest security** — protects against apps and sessions, not against server admins (documented clearly)
 
-## Status
+## Features (v0.1.0)
 
 | Component | Status | Notes |
 |-----------|--------|-------|
 | Vault lifecycle (create/lock/unlock) | 🟢 Working | Argon2id, session-based |
-| Password (Argon2id) | 🟢 Working | + rehash on upgrade |
+| Password hashing (Argon2id) | 🟢 Working | + automatic rehash on upgrade |
 | Recovery key | 🟢 Working | XFLS-XXXX format, download .txt |
-| Image upload to AppData | 🟢 Working | MIME validation, size limit |
-| Image listing/gallery | 🟢 Working | CSS grid, lazy loading |
-| Image viewer (fullscreen) | 🟢 Working | NcModal |
-| Image deletion | 🟢 Working | File + thumb + DB |
-| Thumbnail generation | 🟢 Working | 256x256 JPEG on upload |
-| Session timeout | 🟢 Working | Configurable (default 5min) |
+| Image upload (multi-file) | 🟢 Working | MIME validation (finfo), size limit, SHA-256 checksum |
+| Drag & drop upload | 🟢 Working | With per-file progress bar |
+| Image gallery | 🟢 Working | CSS grid, lazy loading |
+| Image viewer (fullscreen) | 🟢 Working | NcModal, prev/next, keyboard arrows |
+| Image download | 🟢 Working | Original filename preserved |
+| Image deletion | 🟢 Working | File + thumbnail + DB |
+| Multi-select + batch delete | 🟢 Working | Inside vault |
+| Thumbnail generation | 🟢 Working | 256x256 JPEG on upload (GD) |
+| Files integration (Classify) | 🟢 Working | Context menu, single or bulk |
+| Safe move | 🟢 Working | Copy → checksum verify → delete original (no trashbin) |
+| Auto-lock (timeout) | 🟢 Working | Configurable (1min–never, default 5min) |
+| Auto-lock (tab close) | 🟢 Working | visibilitychange listener |
 | Brute-force protection | 🟢 Working | Progressive throttling |
-| VaultSessionMiddleware | 🟢 Working | Gates all image endpoints |
+| Rate limiting | 🟢 Working | On sensitive operations |
+| VaultSessionMiddleware | 🟢 Working | Gates all image endpoints (403 when locked) |
 | Cross-user isolation | 🟢 Working | Ownership check on every query |
+| Admin settings | 🟢 Working | IIconSection + ISettings |
+| Keyboard accessibility | 🟢 Working | tabindex + Enter on tiles, focus outline |
+| Structured logging | 🟢 Working | Operation IDs for audit trail |
+| i18n (pt_BR) | 🟢 Working | |
 | Security PoC (12/12 passed) | 🟢 Verified | See docs/security-poc-results.md |
-| Multi-select + batch actions | 📋 Planned | |
-| Files integration (Send to X-Files) | 📋 Planned | |
-| PIN unlock | 📋 Planned | v1.1 |
-| WebAuthn / FIDO2 | 📋 Planned | v1.2 |
-| Encryption at-rest | 📋 Planned | Future |
-| App Store publication | 📋 Planned | |
+| App Store publication | 🟡 Pending | Certificate signing in progress |
+| PIN unlock | 📋 Planned | v0.2 |
+| WebAuthn / FIDO2 | 📋 Planned | v0.3 |
+| Encryption at-rest (E2EE) | 📋 Planned | Future |
 
 ## Architecture
 
@@ -64,35 +74,40 @@ xfiles/
 │   │   ├── Service/               # VaultService, ImageService, SessionService, PasswordService
 │   │   ├── Db/                    # Entities + QBMappers (Vault, VaultImage)
 │   │   ├── Middleware/            # VaultSessionMiddleware (auth gate)
-│   │   ├── Migration/             # DB schema
-│   │   └── BackgroundJob/         # ExpireSessionsJob
+│   │   ├── Listener/             # Event listeners
+│   │   ├── Migration/             # DB schema (xfiles_vaults, xfiles_images)
+│   │   └── Settings/             # AdminSettings, AdminSection
 │   ├── src/                       # Vue.js frontend
-│   │   ├── views/                 # LockedView, GalleryView, SettingsView
-│   │   ├── components/            # UnlockForm, ImageGrid, ImageViewer, UploadArea
-│   │   └── services/              # API client
-│   ├── templates/                 # PHP template (Vue mount point)
+│   │   ├── views/                 # SetupView, LockedView, UnlockedView, SettingsView
+│   │   ├── services/              # API client
+│   │   ├── init.js               # FileAction registration (Classify)
+│   │   └── main.js              # App entry point
+│   ├── js/                        # Webpack build output
+│   ├── l10n/                      # Translations (pt_BR)
 │   ├── img/                       # App icon
-│   └── tests/                     # PHPUnit (Unit + Integration)
-├── docs/                          # Technical planning, audits
+│   └── templates/                 # PHP template (Vue mount point)
+├── docs/                          # Architecture decisions, security audit, QA plan
 ├── scripts/                       # Deploy, test automation
 └── .github/                       # CI workflows
 ```
 
 ## Tech Stack
 
-- **Backend:** PHP 8.2+ / Nextcloud App Framework 28+
-- **Frontend:** Vue.js 2.7 / @nextcloud/vue / Webpack 5
+- **Backend:** PHP 8.2+ / Nextcloud App Framework 28–34
+- **Frontend:** Vue.js 2.7 / @nextcloud/vue 8 / Webpack 5
 - **Storage:** IAppData (private per-app filesystem, isolated from user files)
-- **Auth:** Argon2id password hashing + ISession + BruteForceProtection
-- **Database:** QBMapper + Entities (vaults, images metadata)
+- **Auth:** Argon2id password hashing + ISession (CryptoSessionData) + BruteForceProtection
+- **Database:** QBMapper + Entities (xfiles_vaults, xfiles_images)
+- **Integrity:** SHA-256 checksum on every stored image
 
 ## Security Model
 
 X-Files protects against:
 - Other Nextcloud apps accessing your vault images
 - Files / Photos / Memories / Search / WebDAV seeing vault content
+- Desktop and mobile clients (Nextcloud sync) accessing vault files
 - Compromised browser sessions (requires independent vault password)
-- Brute-force unlock attempts (progressive throttling)
+- Brute-force unlock attempts (progressive throttling + rate limiting)
 
 X-Files does **NOT** protect against:
 - Server administrators with filesystem access
@@ -101,7 +116,7 @@ X-Files does **NOT** protect against:
 
 For protection against admin access, E2EE (at-rest encryption) is planned for a future version.
 
-## API Endpoints (planned)
+## API Endpoints
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
@@ -119,7 +134,7 @@ For protection against admin access, E2EE (at-rest encryption) is planned for a 
 
 ## Contributing
 
-Contributions welcome. This project is in early development — check the issues for areas where help is needed.
+Contributions welcome. Check the [issues](https://github.com/luisfacarmo/xfiles/issues) for areas where help is needed.
 
 ## License
 
