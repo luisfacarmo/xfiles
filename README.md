@@ -2,7 +2,7 @@
 
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](LICENSE)
 [![PHP](https://img.shields.io/badge/PHP-8.2+-purple.svg)](https://php.net/)
-[![Nextcloud](https://img.shields.io/badge/Nextcloud-28--34-0082c9.svg)](https://nextcloud.com/)
+[![Nextcloud](https://img.shields.io/badge/Nextcloud-28--35-0082c9.svg)](https://nextcloud.com/)
 [![Vue.js](https://img.shields.io/badge/Vue.js-2.7-4FC08D.svg)](https://vuejs.org/)
 
 > A photo vault for Nextcloud — lock, hide, and protect your most sensitive images.
