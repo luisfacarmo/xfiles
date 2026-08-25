@@ -12,7 +12,7 @@
 > — Named after the classified cases that nobody was supposed to access.
 
 > [!NOTE]
-> X-Files v0.1.0 is the first stable release. App Store publication is pending certificate signing ([PR #1179](https://github.com/nextcloud/app-certificate-requests/pull/1179)).
+> X-Files v0.1.0 is the first stable release. Available on the [Nextcloud App Store](https://apps.nextcloud.com/apps/xfiles).
 
 ## What is this?
 
@@ -57,7 +57,7 @@ Think Google Photos Locked Folder or Samsung Secure Folder, but self-hosted.
 | Structured logging | 🟢 Working | Operation IDs for audit trail |
 | i18n (pt_BR) | 🟢 Working | |
 | Security PoC (12/12 passed) | 🟢 Verified | See docs/security-poc-results.md |
-| App Store publication | 🟡 Pending | Certificate signing in progress |
+| App Store publication | 🟢 Published | [apps.nextcloud.com/apps/xfiles](https://apps.nextcloud.com/apps/xfiles) |
 | PIN unlock | 📋 Planned | v0.2 |
 | WebAuthn / FIDO2 | 📋 Planned | v0.3 |
 | Encryption at-rest (E2EE) | 📋 Planned | Future |
